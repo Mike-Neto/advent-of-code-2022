@@ -1,23 +1,13 @@
 use std::{fs, io::Error};
 
-pub fn day_one_part_one(path: &str) -> Result<u64, Error> {
-    let max = fs::read_to_string(path)?
-        .split_terminator("\n\n")
-        .map(|user_block| {
-            let total_calories: u64 = user_block
-                .split_terminator('\n')
-                .filter_map(|calories| calories.parse::<u64>().ok())
-                .sum();
-
-            total_calories
-        })
-        .max()
-        .unwrap_or(0);
-
-    Ok(max)
-}
-
-pub fn day_one_part_two(path: &str) -> Result<u64, Error> {
+/// Finds read file `path` and calculates the sum of all calories for
+/// each person, then return the sum based on `window` greatest amounts
+///
+/// # Errors
+///
+/// Will return `Err` if `path` does not exist or the user does not have
+/// permission to read it.
+pub fn calc_max_calories_window(path: &str, window: usize) -> Result<u64, Error> {
     let mut max: Vec<u64> = fs::read_to_string(path)?
         .split_terminator("\n\n")
         .map(|user_block| {
@@ -30,36 +20,36 @@ pub fn day_one_part_two(path: &str) -> Result<u64, Error> {
         })
         .collect();
 
-    max.sort();
+    max.sort_unstable();
 
-    Ok(max.into_iter().rev().take(3).sum())
+    Ok(max.into_iter().rev().take(window).sum())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{day_one_part_one, day_one_part_two};
+    use crate::calc_max_calories_window;
 
     #[test]
     fn day_one_part_one_example() {
-        let result = day_one_part_one("example.txt").unwrap();
-        assert_eq!(result, 24000);
+        let result = calc_max_calories_window("example.txt", 1).unwrap();
+        assert_eq!(result, 24_000);
     }
 
     #[test]
     fn day_one_part_one_data() {
-        let result = day_one_part_one("data.txt").unwrap();
-        assert_eq!(result, 72511);
+        let result = calc_max_calories_window("data.txt", 1).unwrap();
+        assert_eq!(result, 72_511);
     }
 
     #[test]
     fn day_one_part_two_example() {
-        let result = day_one_part_two("example.txt").unwrap();
-        assert_eq!(result, 45000);
+        let result = calc_max_calories_window("example.txt", 3).unwrap();
+        assert_eq!(result, 45_000);
     }
 
     #[test]
     fn day_one_part_two_data() {
-        let result = day_one_part_two("data.txt").unwrap();
-        assert_eq!(result, 212117);
+        let result = calc_max_calories_window("data.txt", 3).unwrap();
+        assert_eq!(result, 212_117);
     }
 }
