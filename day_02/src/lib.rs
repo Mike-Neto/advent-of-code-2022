@@ -1,56 +1,61 @@
 use std::{fs, io::Error};
 
-enum Outcome {
-    Lose,
-    Draw,
-    Win,
-}
-
-impl Outcome {
-    fn from_char(char: &str) -> Option<Outcome> {
-        match char {
-            "X" => Some(Outcome::Lose),
-            "Y" => Some(Outcome::Draw),
-            "Z" => Some(Outcome::Win),
-            _ => None,
-        }
-    }
-
-    fn value(&self) -> u64 {
-        match self {
-            Outcome::Lose => 0,
-            Outcome::Draw => 3,
-            Outcome::Win => 6,
-        }
-    }
-}
-
 enum Choice {
     Rock,
     Paper,
     Scissors,
 }
 
+enum Outcome {
+    Lose,
+    Draw,
+    Win,
+}
+
+pub enum Match {
+    Choice,
+    Outcome,
+}
+
 impl Choice {
-    fn from_char(char: &str) -> Option<Choice> {
+    fn from_char(char: &str) -> Option<Self> {
         match char {
-            "A" | "X" => Some(Choice::Rock),
-            "B" | "Y" => Some(Choice::Paper),
-            "C" | "Z" => Some(Choice::Scissors),
+            "A" | "X" => Some(Self::Rock),
+            "B" | "Y" => Some(Self::Paper),
+            "C" | "Z" => Some(Self::Scissors),
             _ => None,
         }
     }
 
-    fn value(&self) -> u64 {
+    const fn value(&self) -> u64 {
         match self {
-            Choice::Rock => 1,
-            Choice::Paper => 2,
-            Choice::Scissors => 3,
+            Self::Rock => 1,
+            Self::Paper => 2,
+            Self::Scissors => 3,
         }
     }
 }
 
-fn outcome_from_choices(opponent: &Choice, player: &Choice) -> Outcome {
+impl Outcome {
+    fn from_char(char: &str) -> Option<Self> {
+        match char {
+            "X" => Some(Self::Lose),
+            "Y" => Some(Self::Draw),
+            "Z" => Some(Self::Win),
+            _ => None,
+        }
+    }
+
+    const fn value(&self) -> u64 {
+        match self {
+            Self::Lose => 0,
+            Self::Draw => 3,
+            Self::Win => 6,
+        }
+    }
+}
+
+const fn outcome_from_choices(opponent: &Choice, player: &Choice) -> Outcome {
     match player {
         Choice::Rock => match opponent {
             Choice::Rock => Outcome::Draw,
@@ -70,13 +75,13 @@ fn outcome_from_choices(opponent: &Choice, player: &Choice) -> Outcome {
     }
 }
 
-fn score_from_round(opponent: &Choice, player: &Choice) -> u64 {
+const fn score_from_choices(opponent: &Choice, player: &Choice) -> u64 {
     let outcome = outcome_from_choices(opponent, player);
 
     outcome.value() + player.value()
 }
 
-fn choice_from_opponent_and_outcome(opponent: &Choice, outcome: &Outcome) -> Choice {
+const fn choice_from_opponent_and_outcome(opponent: &Choice, outcome: &Outcome) -> Choice {
     match opponent {
         Choice::Rock => match outcome {
             Outcome::Draw => Choice::Rock,
@@ -96,41 +101,39 @@ fn choice_from_opponent_and_outcome(opponent: &Choice, outcome: &Outcome) -> Cho
     }
 }
 
-fn score_from_round_2(opponent: &Choice, outcome: &Outcome) -> u64 {
+const fn score_from_choice_and_outcome(opponent: &Choice, outcome: &Outcome) -> u64 {
     let player = choice_from_opponent_and_outcome(opponent, outcome);
 
     outcome.value() + player.value()
 }
 
-pub fn day_two_part_one(path: &str) -> Result<u64, Error> {
-    let score: u64 = fs::read_to_string(path)?
-        .lines()
-        .map(|round| {
-            round
-                .split_whitespace()
-                .take(2)
-                .filter_map(|char| Choice::from_char(char))
-                .collect()
-        })
-        .map(|round: Vec<Choice>| score_from_round(&round[0], &round[1]))
-        .sum();
-
-    Ok(score)
-}
-
-pub fn day_two_part_two(path: &str) -> Result<u64, Error> {
+/// Runs each round based on the `match_type` interpretation of the second column
+/// and sums up the score of the whole match.
+///
+/// # Errors
+///
+/// Will return `Err` if `path` does not exist or the user does not have
+/// permission to read it.
+pub fn score_from_match_type(path: &str, match_type: &Match) -> Result<u64, Error> {
     let score: u64 = fs::read_to_string(path)?
         .lines()
         .filter_map(|round| {
             let round: Vec<&str> = round.split_whitespace().take(2).collect();
             let choice = Choice::from_char(round[0]);
-            let outcome = Outcome::from_char(round[1]);
-            match (choice, outcome) {
-                (Some(choice), Some(outcome)) => Some((choice, outcome)),
+            let match_type_value = match match_type {
+                Match::Choice => (Choice::from_char(round[1]), None),
+                Match::Outcome => (None, Outcome::from_char(round[1])),
+            };
+            match (choice, match_type_value) {
+                (Some(choice), (Some(player_choice), None)) => {
+                    Some(score_from_choices(&choice, &player_choice))
+                }
+                (Some(choice), (None, Some(round_outcome))) => {
+                    Some(score_from_choice_and_outcome(&choice, &round_outcome))
+                }
                 _ => None,
             }
         })
-        .map(|(choice, outcome)| score_from_round_2(&choice, &outcome))
         .sum();
 
     Ok(score)
@@ -138,30 +141,30 @@ pub fn day_two_part_two(path: &str) -> Result<u64, Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{day_two_part_one, day_two_part_two};
+    use crate::{score_from_match_type, Match};
 
     #[test]
     fn day_two_part_one_example() {
-        let result = day_two_part_one("example.txt").unwrap();
+        let result = score_from_match_type("example.txt", &Match::Choice).unwrap();
         assert_eq!(result, 15);
     }
 
     #[test]
     fn day_two_part_one_data() {
-        let result = day_two_part_one("data.txt").unwrap();
+        let result = score_from_match_type("data.txt", &Match::Choice).unwrap();
         assert_eq!(result, 11603);
         assert!(result < 12149);
     }
 
     #[test]
     fn day_two_part_two_example() {
-        let result = day_two_part_two("example.txt").unwrap();
+        let result = score_from_match_type("example.txt", &Match::Outcome).unwrap();
         assert_eq!(result, 12);
     }
 
     #[test]
     fn day_two_part_two_data() {
-        let result = day_two_part_two("data.txt").unwrap();
+        let result = score_from_match_type("data.txt", &Match::Outcome).unwrap();
         assert_eq!(result, 12725);
         assert!(result > 11915);
     }
