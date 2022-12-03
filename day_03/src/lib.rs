@@ -1,3 +1,4 @@
+use array_tool::vec::Intersect;
 use std::{fs, io::Error};
 
 fn char_to_priority(c: char) -> u64 {
@@ -36,10 +37,30 @@ pub fn day_three_part_one(path: &str) -> Result<u64, Error> {
     Ok(score)
 }
 
+// TODO I see now that array intersection is probably the thing I need here
+pub fn day_three_part_two(path: &str) -> Result<u64, Error> {
+    let file = fs::read_to_string(path)?;
+    let group: Vec<&str> = file.lines().collect();
+    let score: u64 = group
+        .chunks_exact(3)
+        .filter_map(|bags| {
+            let bags: Vec<Vec<char>> = bags.iter().map(|s| s.chars().collect()).collect();
+            let team = bags[0]
+                .intersect(bags[1].clone())
+                .intersect(bags[2].clone())
+                .first()
+                .map(|c| char_to_priority(*c));
+            team
+        })
+        .sum();
+
+    Ok(score)
+}
+
 #[cfg(test)]
 mod tests {
     use super::day_three_part_one;
-    use crate::char_to_priority;
+    use crate::{char_to_priority, day_three_part_two};
 
     #[test]
     fn day_three_part_one_example() {
@@ -63,5 +84,17 @@ mod tests {
     fn day_three_part_one_data() {
         let result = day_three_part_one("data.txt").unwrap();
         assert_eq!(result, 8123);
+    }
+
+    #[test]
+    fn day_three_part_two_example() {
+        let result = day_three_part_two("example.txt").unwrap();
+        assert_eq!(result, 70);
+    }
+
+    #[test]
+    fn day_three_part_two_data() {
+        let result = day_three_part_two("data.txt").unwrap();
+        assert_eq!(result, 2620);
     }
 }
