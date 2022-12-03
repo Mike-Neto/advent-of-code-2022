@@ -28,11 +28,12 @@ pub fn day_three_part_one(path: &str) -> Result<u64, Error> {
                     .all(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase())
             {
                 let half = items.len() / 2;
-                let mut first_compartment = items.chars().take(half);
+                let first_compartment: Vec<char> = items.chars().take(half).collect();
                 let second_compartment: Vec<char> = items.chars().skip(half).take(half).collect();
-                let mistake = first_compartment.find(|c| second_compartment.contains(c));
+                let intersection = first_compartment.intersect(second_compartment);
+                let mistake = intersection.first();
                 if let Some(mistake) = mistake {
-                    return Some(char_to_priority(mistake));
+                    return Some(char_to_priority(*mistake));
                 }
             }
             None
@@ -59,7 +60,7 @@ pub fn day_three_part_two(path: &str) -> Result<u64, Error> {
                 .intersect(bags[1].clone())
                 .intersect(bags[2].clone())
                 .first()
-                .map(|c| char_to_priority(*c));
+                .map(|&c| char_to_priority(c));
             team
         })
         .sum();
