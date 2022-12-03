@@ -4,15 +4,20 @@ use std::{fs, io::Error};
 fn char_to_priority(c: char) -> u64 {
     if c.is_ascii_lowercase() {
         return u64::from(c) - 96;
-    } else {
-        u64::from(c) - 38
     }
+    u64::from(c) - 38
 }
 
-fn is_even(n: usize) -> bool {
+const fn is_even(n: usize) -> bool {
     n % 2 == 0
 }
 
+/// TODO
+///
+/// # Errors
+///
+/// Will return `Err` if `path` does not exist or the user does not have
+/// permission to read it.
 pub fn day_three_part_one(path: &str) -> Result<u64, Error> {
     let score: u64 = fs::read_to_string(path)?
         .lines()
@@ -37,7 +42,12 @@ pub fn day_three_part_one(path: &str) -> Result<u64, Error> {
     Ok(score)
 }
 
-// TODO I see now that array intersection is probably the thing I need here
+/// TODO
+///
+/// # Errors
+///
+/// Will return `Err` if `path` does not exist or the user does not have
+/// permission to read it.
 pub fn day_three_part_two(path: &str) -> Result<u64, Error> {
     let file = fs::read_to_string(path)?;
     let group: Vec<&str> = file.lines().collect();
