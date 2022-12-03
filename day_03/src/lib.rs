@@ -58,4 +58,10 @@ mod tests {
         let result = char_to_priority('Z');
         assert_eq!(result, 52);
     }
+
+    #[test]
+    fn day_three_part_one_data() {
+        let result = day_three_part_one("data.txt").unwrap();
+        assert_eq!(result, 8123);
+    }
 }
