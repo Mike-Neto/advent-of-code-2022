@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, io::Error, ops::RangeInclusive};
+use std::{fs::read_to_string, ops::RangeInclusive};
 
 use nom::{
     bytes::complete::tag,
@@ -7,6 +7,12 @@ use nom::{
     sequence::separated_pair,
     IResult as NomResult,
 };
+
+#[derive(Debug)]
+pub enum Error {
+    IO(std::io::Error),
+    Nom(String),
+}
 
 type SectionAssignment = (RangeInclusive<u32>, RangeInclusive<u32>);
 
@@ -33,8 +39,9 @@ fn section_assignments(input: &str) -> NomResult<&str, Vec<SectionAssignment>> {
 /// Will return `Err` if `path` does not exist or the user does not have
 /// permission to read it.
 pub fn day_four_part_one(path: &str) -> Result<usize, Error> {
-    let input = read_to_string(path)?;
-    let (_, section_assignments) = section_assignments(&input).expect("failed parsing");
+    let input = read_to_string(path).map_err(Error::IO)?;
+    let (_, section_assignments) =
+        section_assignments(&input).map_err(|e| Error::Nom(e.to_string()))?;
 
     let overlapped_ranges_count = section_assignments
         .iter()
@@ -55,8 +62,9 @@ pub fn day_four_part_one(path: &str) -> Result<usize, Error> {
 /// Will return `Err` if `path` does not exist or the user does not have
 /// permission to read it.
 pub fn day_four_part_two(path: &str) -> Result<usize, Error> {
-    let input = read_to_string(path)?;
-    let (_, section_assignments) = section_assignments(&input).expect("failed parsing");
+    let input = read_to_string(path).map_err(Error::IO)?;
+    let (_, section_assignments) =
+        section_assignments(&input).map_err(|e| Error::Nom(e.to_string()))?;
 
     let overlapped_ranges_count = section_assignments
         .iter()
