@@ -22,3 +22,7 @@ version = "0.1.0"
 dependencies = [
  "array_tool",
 ]
+
+[[package]]
+name = "day_04"
+version = "0.1.0"
