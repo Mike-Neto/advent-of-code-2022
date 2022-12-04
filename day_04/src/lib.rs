@@ -1,4 +1,30 @@
-use std::{fs, io::Error, ops::RangeInclusive};
+use std::{fs::read_to_string, io::Error, ops::RangeInclusive};
+
+use nom::{
+    bytes::complete::tag,
+    character::complete::{self, newline},
+    multi::separated_list1,
+    sequence::separated_pair,
+    IResult as NomResult,
+};
+
+type SectionAssignment = (RangeInclusive<u32>, RangeInclusive<u32>);
+
+fn sections(input: &str) -> NomResult<&str, RangeInclusive<u32>> {
+    let (input, (start, end)) = separated_pair(complete::u32, tag("-"), complete::u32)(input)?;
+
+    Ok((input, start..=end))
+}
+fn line(input: &str) -> NomResult<&str, SectionAssignment> {
+    let (input, (start, end)) = separated_pair(sections, tag(","), sections)(input)?;
+
+    Ok((input, (start, end)))
+}
+fn section_assignments(input: &str) -> NomResult<&str, Vec<SectionAssignment>> {
+    let (input, ranges) = separated_list1(newline, line)(input)?;
+
+    Ok((input, ranges))
+}
 
 /// TODO
 ///
@@ -7,23 +33,14 @@ use std::{fs, io::Error, ops::RangeInclusive};
 /// Will return `Err` if `path` does not exist or the user does not have
 /// permission to read it.
 pub fn day_four_part_one(path: &str) -> Result<usize, Error> {
-    let overlapped_ranges_count = fs::read_to_string(path)?
-        .lines()
-        .map(|assignments_pair| {
-            let ranges: Vec<RangeInclusive<u64>> = assignments_pair
-                .split_terminator(',')
-                .take(2)
-                .filter_map(|section_interval| {
-                    section_interval
-                        .split_once('-')
-                        .map(|(a, b)| (a.parse().unwrap_or(0)..=b.parse().unwrap_or(0)))
-                })
-                .collect();
-            ranges
-        })
-        .filter(|ranges| {
-            let a = ranges[0].clone().all(|aa| ranges[1].contains(&aa));
-            let b = ranges[1].clone().all(|aa| ranges[0].contains(&aa));
+    let input = read_to_string(path)?;
+    let (_, section_assignments) = section_assignments(&input).expect("failed parsing");
+
+    let overlapped_ranges_count = section_assignments
+        .iter()
+        .filter(|(range_a, range_b)| {
+            let a = range_a.clone().all(|aa| range_b.contains(&aa));
+            let b = range_b.clone().all(|aa| range_a.contains(&aa));
             a || b
         })
         .count();
@@ -38,23 +55,14 @@ pub fn day_four_part_one(path: &str) -> Result<usize, Error> {
 /// Will return `Err` if `path` does not exist or the user does not have
 /// permission to read it.
 pub fn day_four_part_two(path: &str) -> Result<usize, Error> {
-    let overlapped_ranges_count = fs::read_to_string(path)?
-        .lines()
-        .map(|assignments_pair| {
-            let ranges: Vec<RangeInclusive<u64>> = assignments_pair
-                .split_terminator(',')
-                .take(2)
-                .filter_map(|section_interval| {
-                    section_interval
-                        .split_once('-')
-                        .map(|(a, b)| (a.parse().unwrap_or(0)..=b.parse().unwrap_or(0)))
-                })
-                .collect();
-            ranges
-        })
-        .filter(|ranges| {
-            let a = ranges[0].clone().any(|aa| ranges[1].contains(&aa));
-            let b = ranges[1].clone().any(|aa| ranges[0].contains(&aa));
+    let input = read_to_string(path)?;
+    let (_, section_assignments) = section_assignments(&input).expect("failed parsing");
+
+    let overlapped_ranges_count = section_assignments
+        .iter()
+        .filter(|(range_a, range_b)| {
+            let a = range_a.clone().any(|aa| range_b.contains(&aa));
+            let b = range_b.clone().any(|aa| range_a.contains(&aa));
             a || b
         })
         .count();
