@@ -5,5 +5,8 @@ members = [
     "day_02",
     "day_03",
     "day_04",
+    "day_05",
 ]
 
+[workspace.dependencies]
+nom = "7.1.1"
