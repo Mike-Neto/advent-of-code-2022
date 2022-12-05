@@ -1,16 +1,5 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    fs::read_to_string,
-    ops::RangeInclusive,
-};
-
-use nom::{
-    bytes::complete::tag,
-    character::complete::{self, alpha1, alphanumeric1, newline, space1},
-    multi::separated_list1,
-    sequence::{delimited, separated_pair, tuple},
-    Finish, IResult as NomResult,
-};
+#![allow(clippy::option_if_let_else)]
+use std::{collections::BTreeMap, fs::read_to_string};
 
 #[derive(Debug)]
 pub enum Error {
@@ -25,19 +14,6 @@ struct Move<'a> {
     from_index: &'a str,
     to_index: &'a str,
 }
-type Stacks<'a> = Vec<Vec<&'a str>>;
-
-fn stacks(input: &str) -> NomResult<&str, Vec<&str>> {
-    let (input, stacks) = separated_list1(space1, delimited(tag("["), alpha1, tag("]")))(input)?;
-
-    Ok((input, stacks))
-}
-
-fn moves(input: &str) -> NomResult<&str, Vec<(&str, &str)>> {
-    let (input, moves) = separated_list1(newline, tuple((tag("move"), space1)))(input)?;
-
-    Ok((input, moves))
-}
 
 /// TODO
 ///
@@ -49,7 +25,7 @@ pub fn day_five_part_one(path: &str) -> Result<String, Error> {
     let input = read_to_string(path).map_err(Error::IO)?;
     let (stacks, moves) = input
         .split_once("\n\n")
-        .ok_or(Error::Parse(format!("Failed to split stacks and moves")))?;
+        .ok_or_else(|| Error::Parse("Failed to split stacks and moves".to_string()))?;
 
     let mut stack_iter = stacks.split_terminator('\n').rev();
     let stack_names: Vec<&str> = stack_iter.next().unwrap_or("").split_whitespace().collect();
@@ -92,9 +68,9 @@ pub fn day_five_part_one(path: &str) -> Result<String, Error> {
 
     for m in moves {
         for _ in 0..m.count {
-            let mut stack_crate = None;
+            let stack_crate;
             {
-                stack_crate = stacks.get_mut(m.from_index).and_then(|from| from.pop());
+                stack_crate = stacks.get_mut(m.from_index).and_then(std::vec::Vec::pop);
             }
             let to = stacks.get_mut(m.to_index);
             if let Some(to) = to {
@@ -110,7 +86,7 @@ pub fn day_five_part_one(path: &str) -> Result<String, Error> {
         .map(|(_, queue)| queue.last().expect("needs at least one elem").to_string())
         .collect::<Vec<String>>();
 
-    Ok(String::from(message.join("")))
+    Ok(message.join(""))
 }
 
 /// TODO
@@ -123,7 +99,7 @@ pub fn day_five_part_two(path: &str) -> Result<String, Error> {
     let input = read_to_string(path).map_err(Error::IO)?;
     let (stacks, moves) = input
         .split_once("\n\n")
-        .ok_or(Error::Parse(format!("Failed to split stacks and moves")))?;
+        .ok_or_else(|| Error::Parse("Failed to split stacks and moves".to_string()))?;
 
     let mut stack_iter = stacks.split_terminator('\n').rev();
     let stack_names: Vec<&str> = stack_iter.next().unwrap_or("").split_whitespace().collect();
@@ -165,21 +141,21 @@ pub fn day_five_part_two(path: &str) -> Result<String, Error> {
         .collect();
 
     for m in moves {
-        let mut stack_crates: Vec<char> = vec![];
+        let stack_crates: Vec<char>;
         {
             // POP count
             stack_crates = stacks
                 .get_mut(m.from_index)
-                .and_then(|from| {
+                .map(|from| {
                     let final_length = from.len() - m.count;
                     let s: Vec<char> = from.drain(final_length..).collect();
-                    Some(s)
+                    s
                 })
-                .unwrap_or(vec![]);
+                .unwrap_or_default();
         }
         let to = stacks.get_mut(m.to_index);
         if let Some(to) = to {
-            for sc in stack_crates.iter() {
+            for sc in &stack_crates {
                 to.push(*sc);
             }
         }
@@ -190,7 +166,7 @@ pub fn day_five_part_two(path: &str) -> Result<String, Error> {
         .map(|(_, queue)| queue.last().expect("needs at least one elem").to_string())
         .collect::<Vec<String>>();
 
-    Ok(String::from(message.join("")))
+    Ok(message.join(""))
 }
 
 #[cfg(test)]
@@ -218,6 +194,6 @@ mod tests {
     #[test]
     fn day_five_part_two_data() {
         let result = day_five_part_two("data.txt").unwrap();
-        assert_eq!(result, format!("CMZ"));
+        assert_eq!(result, format!("VRZGHDFBQ"));
     }
 }
