@@ -1,4 +1,11 @@
-#![allow(clippy::option_if_let_else)]
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::{self, alpha1, alphanumeric1, multispace1, newline},
+    multi::separated_list1,
+    sequence::delimited,
+    IResult as NomResult,
+};
 use std::{collections::BTreeMap, fs::read_to_string};
 
 #[derive(Debug)]
@@ -15,6 +22,64 @@ struct Move<'a> {
     to_index: &'a str,
 }
 
+type Stacks<'a> = BTreeMap<&'a str, Vec<&'a str>>;
+
+fn parse_crate(input: &str) -> NomResult<&str, Option<&str>> {
+    let (input, c) = alt((
+        tag("   "),
+        delimited(complete::char('['), alpha1, complete::char(']')),
+    ))(input)?;
+
+    let result = match c {
+        "   " => None,
+        value => Some(value),
+    };
+    Ok((input, result))
+}
+
+fn parse_move(input: &str) -> NomResult<&str, Move> {
+    let (input, _) = tag("move ")(input)?;
+    let (input, count) = complete::i64(input)?;
+    let (input, _) = tag(" from ")(input)?;
+    let (input, from_index) = alphanumeric1(input)?;
+    let (input, _) = tag(" to ")(input)?;
+    let (input, to_index) = alphanumeric1(input)?;
+    Ok((
+        input,
+        Move {
+            count: count.try_into().unwrap_or_default(),
+            from_index,
+            to_index,
+        },
+    ))
+}
+
+fn parse_input(input: &str) -> NomResult<&str, (Stacks, Vec<Move>)> {
+    let (input, crate_rows) =
+        separated_list1(newline, separated_list1(tag(" "), parse_crate))(input)?;
+    let (input, _) = newline(input)?;
+    let (input, stack_names) =
+        separated_list1(tag(" "), delimited(tag(" "), alphanumeric1, tag(" ")))(input)?;
+    let (input, _) = multispace1(input)?;
+    let (input, moves) = separated_list1(newline, parse_move)(input)?;
+
+    let stacks: BTreeMap<&str, Vec<&str>> = stack_names
+        .iter()
+        .enumerate()
+        .map(|(row_index, &stack_name)| {
+            let stack: Vec<&str> = crate_rows
+                .iter()
+                .rev()
+                .filter_map(|row| row[row_index])
+                .collect();
+
+            (stack_name, stack)
+        })
+        .collect();
+
+    Ok((input, (stacks, moves)))
+}
+
 /// TODO
 ///
 /// # Errors
@@ -23,48 +88,7 @@ struct Move<'a> {
 /// permission to read it.
 pub fn day_five_part_one(path: &str) -> Result<String, Error> {
     let input = read_to_string(path).map_err(Error::IO)?;
-    let (stacks, moves) = input
-        .split_once("\n\n")
-        .ok_or_else(|| Error::Parse("Failed to split stacks and moves".to_string()))?;
-
-    let mut stack_iter = stacks.split_terminator('\n').rev();
-    let stack_names: Vec<&str> = stack_iter.next().unwrap_or("").split_whitespace().collect();
-    let mut stacks: BTreeMap<&str, Vec<char>> = BTreeMap::new();
-
-    for line in stack_iter {
-        let mut index = 1;
-        let chars: Vec<char> = line.chars().collect();
-        for n in &stack_names {
-            let char = chars[index];
-            let queue = stacks.get_mut(n);
-            if !char.is_whitespace() {
-                if let Some(queue) = queue {
-                    queue.push(char);
-                } else {
-                    let queue = vec![char];
-                    stacks.insert(n, queue);
-                }
-            }
-            index += 4;
-        }
-    }
-
-    let moves: Vec<Move> = moves
-        .split_terminator('\n')
-        .map(|line| {
-            let segments: Vec<&str> = line.split_whitespace().collect();
-
-            let count = segments[1].parse().unwrap_or(0);
-            let from_index = segments[3];
-            let to_index = segments[5];
-
-            Move {
-                count,
-                from_index,
-                to_index,
-            }
-        })
-        .collect();
+    let (_, (mut stacks, moves)) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
 
     for m in moves {
         for _ in 0..m.count {
@@ -83,7 +107,7 @@ pub fn day_five_part_one(path: &str) -> Result<String, Error> {
 
     let message = stacks
         .iter()
-        .map(|(_, queue)| queue.last().expect("needs at least one elem").to_string())
+        .map(|(_, queue)| (*queue.last().expect("needs at least one elem")).to_string())
         .collect::<Vec<String>>();
 
     Ok(message.join(""))
@@ -97,58 +121,17 @@ pub fn day_five_part_one(path: &str) -> Result<String, Error> {
 /// permission to read it.
 pub fn day_five_part_two(path: &str) -> Result<String, Error> {
     let input = read_to_string(path).map_err(Error::IO)?;
-    let (stacks, moves) = input
-        .split_once("\n\n")
-        .ok_or_else(|| Error::Parse("Failed to split stacks and moves".to_string()))?;
-
-    let mut stack_iter = stacks.split_terminator('\n').rev();
-    let stack_names: Vec<&str> = stack_iter.next().unwrap_or("").split_whitespace().collect();
-    let mut stacks: BTreeMap<&str, Vec<char>> = BTreeMap::new();
-
-    for line in stack_iter {
-        let mut index = 1;
-        let chars: Vec<char> = line.chars().collect();
-        for n in &stack_names {
-            let char = chars[index];
-            let queue = stacks.get_mut(n);
-            if !char.is_whitespace() {
-                if let Some(queue) = queue {
-                    queue.push(char);
-                } else {
-                    let queue = vec![char];
-                    stacks.insert(n, queue);
-                }
-            }
-            index += 4;
-        }
-    }
-
-    let moves: Vec<Move> = moves
-        .split_terminator('\n')
-        .map(|line| {
-            let segments: Vec<&str> = line.split_whitespace().collect();
-
-            let count = segments[1].parse().unwrap_or(0);
-            let from_index = segments[3];
-            let to_index = segments[5];
-
-            Move {
-                count,
-                from_index,
-                to_index,
-            }
-        })
-        .collect();
+    let (_, (mut stacks, moves)) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
 
     for m in moves {
-        let stack_crates: Vec<char>;
+        let stack_crates: Vec<&str>;
         {
             // POP count
             stack_crates = stacks
                 .get_mut(m.from_index)
                 .map(|from| {
                     let final_length = from.len() - m.count;
-                    let s: Vec<char> = from.drain(final_length..).collect();
+                    let s: Vec<&str> = from.drain(final_length..).collect();
                     s
                 })
                 .unwrap_or_default();
@@ -163,7 +146,7 @@ pub fn day_five_part_two(path: &str) -> Result<String, Error> {
 
     let message = stacks
         .iter()
-        .map(|(_, queue)| queue.last().expect("needs at least one elem").to_string())
+        .map(|(_, queue)| (*queue.last().expect("needs at least one elem")).to_string())
         .collect::<Vec<String>>();
 
     Ok(message.join(""))
