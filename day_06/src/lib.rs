@@ -5,7 +5,6 @@ use std::fs::read_to_string;
 pub enum Error {
     IO(std::io::Error),
     Nom(String),
-    Parse(String),
 }
 
 /// TODO

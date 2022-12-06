@@ -21,13 +21,10 @@ fn sections(input: &str) -> NomResult<&str, RangeInclusive<u32>> {
 
     Ok((input, start..=end))
 }
-fn line(input: &str) -> NomResult<&str, SectionAssignment> {
-    let (input, (start, end)) = separated_pair(sections, tag(","), sections)(input)?;
 
-    Ok((input, (start, end)))
-}
 fn section_assignments(input: &str) -> NomResult<&str, Vec<SectionAssignment>> {
-    let (input, ranges) = separated_list1(newline, line)(input)?;
+    let (input, ranges) =
+        separated_list1(newline, separated_pair(sections, tag(","), sections))(input)?;
 
     Ok((input, ranges))
 }

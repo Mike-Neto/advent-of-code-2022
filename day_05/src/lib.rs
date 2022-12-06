@@ -12,7 +12,6 @@ use std::{collections::BTreeMap, fs::read_to_string};
 pub enum Error {
     IO(std::io::Error),
     Nom(String),
-    Parse(String),
 }
 
 #[derive(Debug)]
