@@ -137,5 +137,25 @@
             "args": [],
             "cwd": "${workspaceFolder}/day_07"
         }
+        ,
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'day_08'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=day_08"
+                ],
+                "filter": {
+                    "name": "day_08",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/day_08"
+        }
     ]
 }
