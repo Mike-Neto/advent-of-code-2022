@@ -280,26 +280,26 @@ mod tests {
     use crate::{day_seven_part_one, day_seven_part_two};
 
     #[test]
-    fn day_six_part_one_example() {
+    fn day_seven_part_one_example() {
         let result = day_seven_part_one("example.txt").unwrap();
         assert_eq!(result, 95_437);
     }
 
     #[test]
-    fn day_six_part_one_data() {
+    fn day_seven_part_one_data() {
         let result = day_seven_part_one("data.txt").unwrap();
         assert_eq!(result, 1611443);
     }
 
     #[test]
-    fn day_six_part_two_example() {
+    fn day_seven_part_two_example() {
         let result = day_seven_part_two("example.txt").unwrap();
         assert_eq!(result, 24_933_642);
     }
 
     #[test]
-    fn day_six_part_two_data() {
+    fn day_seven_part_two_data() {
         let result = day_seven_part_two("data.txt").unwrap();
-        assert_eq!(result, 1);
+        assert_eq!(result, 2086088);
     }
 }
