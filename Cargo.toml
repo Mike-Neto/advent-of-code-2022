@@ -19,3 +19,4 @@ members = [
 nom = "7.1.1"
 array_tool = "1.0.3"
 itertools = "0.10.5"
+pathfinding = "4.0.0"
