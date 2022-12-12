@@ -22,13 +22,13 @@ fn parse_input(input: &str) -> NomResult<&str, Vec<Vec<char>>> {
 struct Pos(usize, usize);
 
 impl Pos {
-    fn distance(&self, other: &Pos) -> usize {
+    const fn distance(&self, other: &Self) -> usize {
         self.0.abs_diff(other.0) + self.1.abs_diff(other.1)
     }
 
-    fn successors(&self, height_map: &Vec<Vec<i16>>) -> Vec<(Pos, usize)> {
-        let &Pos(x, y) = self;
-        let mut cross_positions: Vec<(Pos, usize)> = vec![];
+    fn successors(&self, height_map: &Vec<Vec<i16>>) -> Vec<(Self, usize)> {
+        let &Self(x, y) = self;
+        let mut cross_positions: Vec<(Self, usize)> = vec![];
         let current_height = height_map[y][x];
 
         if x >= 1 {
@@ -36,7 +36,7 @@ impl Pos {
             let target_height = height_map[y][target_x];
             let diff = target_height - current_height;
             if diff <= 1 {
-                cross_positions.push((Pos(target_x, y), 1))
+                cross_positions.push((Self(target_x, y), 1));
             }
         }
         if x < height_map[y].len() - 1 {
@@ -44,7 +44,7 @@ impl Pos {
             let target_height = height_map[y][target_x];
             let diff = target_height - current_height;
             if diff <= 1 {
-                cross_positions.push((Pos(target_x, y), 1))
+                cross_positions.push((Self(target_x, y), 1));
             }
         }
         if y >= 1 {
@@ -52,7 +52,7 @@ impl Pos {
             let target_height = height_map[target_y][x];
             let diff = target_height - current_height;
             if diff <= 1 {
-                cross_positions.push((Pos(x, target_y), 1))
+                cross_positions.push((Self(x, target_y), 1));
             }
         }
         if y < height_map.len() - 1 {
@@ -60,7 +60,7 @@ impl Pos {
             let target_height = height_map[target_y][x];
             let diff = target_height - current_height;
             if diff <= 1 {
-                cross_positions.push((Pos(x, target_y), 1))
+                cross_positions.push((Self(x, target_y), 1));
             }
         }
 
@@ -94,9 +94,9 @@ pub fn day_twelve_part_one(path: &str) -> Result<usize, Error> {
             .map(|row| {
                 row.iter()
                     .map(|c| match c {
-                        'S' => return 'a' as i16,
-                        'E' => return 'z' as i16,
-                        _ => return *c as i16,
+                        'S' => 'a' as i16,
+                        'E' => 'z' as i16,
+                        _ => *c as i16,
                     })
                     .collect()
             })
@@ -134,9 +134,9 @@ pub fn day_twelve_part_two(path: &str) -> Result<usize, Error> {
         .map(|row| {
             row.iter()
                 .map(|c| match c {
-                    'S' => return 'a' as i16,
-                    'E' => return 'z' as i16,
-                    _ => return *c as i16,
+                    'S' => 'a' as i16,
+                    'E' => 'z' as i16,
+                    _ => *c as i16,
                 })
                 .collect()
         })
