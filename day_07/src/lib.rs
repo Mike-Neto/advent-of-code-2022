@@ -48,7 +48,7 @@ fn parse_input(input: &str) -> NomResult<&str, Vec<Output>> {
         .lines()
         .filter_map(|line| {
             let segments: Vec<&str> = line.split_whitespace().collect();
-            if segments.len() >= 1 {
+            if !segments.is_empty() {
                 let is_command = segments[0] == "$";
                 if is_command {
                     if segments.len() == 3 && segments[1] == "cd" {
@@ -97,7 +97,7 @@ pub fn day_seven_part_one(path: &str) -> Result<u64, Error> {
     let mut directories: BTreeMap<String, Vec<File>> = BTreeMap::new();
     let mut context: Vec<String> = vec![];
 
-    for o in output.into_iter() {
+    for o in output {
         match o {
             Output::Command(c) => match c {
                 Command::LS => {

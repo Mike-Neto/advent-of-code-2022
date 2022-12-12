@@ -1,3 +1,4 @@
+#![allow(clippy::iter_with_drain)]
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -37,29 +38,17 @@ impl Operation {
     fn operate(&self, old: u64) -> u64 {
         match (&self.a, &self.operator, &self.b) {
             (Operand::Static(value_a), Operator::Add, Operand::Static(value_b)) => {
-                return value_a + value_b;
+                value_a + value_b
             }
-            (Operand::Static(value_a), Operator::Add, Operand::Previous) => {
-                return value_a + old;
-            }
+            (Operand::Static(value_a), Operator::Add, Operand::Previous) => value_a + old,
             (Operand::Static(value_a), Operator::Multiply, Operand::Static(value_b)) => {
-                return value_a * value_b;
+                value_a * value_b
             }
-            (Operand::Static(value_a), Operator::Multiply, Operand::Previous) => {
-                return value_a * old;
-            }
-            (Operand::Previous, Operator::Add, Operand::Static(value_b)) => {
-                return old + value_b;
-            }
-            (Operand::Previous, Operator::Add, Operand::Previous) => {
-                return old + old;
-            }
-            (Operand::Previous, Operator::Multiply, Operand::Static(value_b)) => {
-                return old * value_b;
-            }
-            (Operand::Previous, Operator::Multiply, Operand::Previous) => {
-                return old * old;
-            }
+            (Operand::Static(value_a), Operator::Multiply, Operand::Previous) => value_a * old,
+            (Operand::Previous, Operator::Add, Operand::Static(value_b)) => old + value_b,
+            (Operand::Previous, Operator::Add, Operand::Previous) => old + old,
+            (Operand::Previous, Operator::Multiply, Operand::Static(value_b)) => old * value_b,
+            (Operand::Previous, Operator::Multiply, Operand::Previous) => old * old,
         }
     }
 }

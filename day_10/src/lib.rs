@@ -7,10 +7,10 @@ enum Instructions {
 }
 
 impl Instructions {
-    fn get_cycle(&self) -> usize {
+    const fn get_cycle(&self) -> usize {
         match self {
-            Instructions::Adddx(_) => 2,
-            Instructions::Noop => 1,
+            Self::Adddx(_) => 2,
+            Self::Noop => 1,
         }
     }
 }
@@ -104,7 +104,7 @@ pub fn day_ten_part_two(path: &str) -> Result<String, std::io::Error> {
 
             let sprite_overlaps_current_target = ((sprite_position - 1)
                 ..(sprite_position + sprite_width - 1))
-                .any(|sprite_x| sprite_x == x.try_into().unwrap());
+                .any(|sprite_x| sprite_x == x.try_into().unwrap_or_default());
             if sprite_overlaps_current_target {
                 screen[y][x] = '#';
             } else {

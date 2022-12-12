@@ -18,7 +18,7 @@ pub fn simulate_rope_motions(path: &str, rope_length: usize) -> Result<usize, st
     let motions: Vec<(Direction, usize)> = read_to_string(path)?
         .lines()
         .filter_map(|line| {
-            if let Some((direction, steps)) = line.split_once(" ") {
+            if let Some((direction, steps)) = line.split_once(' ') {
                 let steps: usize = steps.parse().unwrap_or_default();
                 match direction {
                     "U" => return Some((Direction::Up, steps)),
@@ -55,10 +55,9 @@ pub fn simulate_rope_motions(path: &str, rope_length: usize) -> Result<usize, st
                 }
             }
             // Update other rope segments
-            let head = rope
+            let head = *rope
                 .first()
-                .expect("should always have at least two elements")
-                .clone();
+                .expect("should always have at least two elements");
             let last_index = rope.len() - 1;
             let mut previous_segment = head;
             for (index, segment) in rope.iter_mut().enumerate().skip(1) {
@@ -84,7 +83,7 @@ pub fn simulate_rope_motions(path: &str, rope_length: usize) -> Result<usize, st
                     }
                 }
 
-                previous_segment = segment.clone();
+                previous_segment = *segment;
             }
         }
     }

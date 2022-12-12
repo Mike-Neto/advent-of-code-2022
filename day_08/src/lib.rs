@@ -44,8 +44,8 @@ pub fn day_eight_part_one(path: &str) -> Result<usize, std::io::Error> {
                 }
             }
 
-            for y_index in (y_index + 1)..grid.len() {
-                let item = grid[y_index][x_index];
+            for row in grid.iter().skip(y_index + 1) {
+                let item = row[x_index];
                 if item >= *x {
                     bottom_visible = false;
                     break;
@@ -108,8 +108,8 @@ pub fn day_eight_part_two(path: &str) -> Result<u64, std::io::Error> {
                 }
             }
 
-            for y_index in (y_index + 1)..grid.len() {
-                let item = grid[y_index][x_index];
+            for row in grid.iter().skip(y_index + 1) {
+                let item = row[x_index];
                 bottom_score += 1;
                 if item >= *x {
                     break;
@@ -150,6 +150,6 @@ mod tests {
     #[test]
     fn day_eight_part_two_data() {
         let result = day_eight_part_two("data.txt").unwrap();
-        assert_eq!(result, 268464);
+        assert_eq!(result, 268_464);
     }
 }
