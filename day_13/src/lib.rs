@@ -22,7 +22,7 @@ pub struct Pair {
 
 #[derive(Debug, Eq)]
 pub enum Packet {
-    List(Vec<Packet>),
+    List(Vec<Self>),
     Number(u64),
 }
 
@@ -31,8 +31,8 @@ impl PartialEq for Packet {
         match (self, other) {
             (Self::List(l0), Self::List(r0)) => l0 == r0,
             (Self::Number(l0), Self::Number(r0)) => l0 == r0,
-            (Self::List(l0), Self::Number(r0)) => l0 == &vec![Packet::Number(*r0)],
-            (Self::Number(l0), Self::List(r0)) => &vec![Packet::Number(*l0)] == r0,
+            (Self::List(l0), Self::Number(r0)) => l0 == &vec![Self::Number(*r0)],
+            (Self::Number(l0), Self::List(r0)) => &vec![Self::Number(*l0)] == r0,
         }
     }
 }
@@ -40,10 +40,10 @@ impl PartialEq for Packet {
 impl Ord for Packet {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
-            (Packet::List(a), Packet::List(b)) => a.cmp(b),
-            (Packet::List(a), Packet::Number(b)) => a.cmp(&vec![Packet::Number(*b)]),
-            (Packet::Number(a), Packet::List(b)) => vec![Packet::Number(*a)].cmp(&b),
-            (Packet::Number(a), Packet::Number(b)) => a.cmp(b),
+            (Self::List(a), Self::List(b)) => a.cmp(b),
+            (Self::List(a), Self::Number(b)) => a.cmp(&vec![Self::Number(*b)]),
+            (Self::Number(a), Self::List(b)) => vec![Self::Number(*a)].cmp(b),
+            (Self::Number(a), Self::Number(b)) => a.cmp(b),
         }
     }
 }
@@ -56,9 +56,8 @@ impl PartialOrd for Packet {
 
 fn parse_packet(input: &str) -> NomResult<&str, Packet> {
     alt((
-        delimited(tag("["), separated_list0(tag(","), parse_packet), tag("]"))
-            .map(|vec| Packet::List(vec)),
-        nom::character::complete::u64.map(|num| Packet::Number(num)),
+        delimited(tag("["), separated_list0(tag(","), parse_packet), tag("]")).map(Packet::List),
+        nom::character::complete::u64.map(Packet::Number),
     ))(input)
 }
 
@@ -108,8 +107,7 @@ pub fn day_thirteen_part_two(path: &str) -> Result<usize, Error> {
     let mut packets: Vec<Packet> = pairs
         .into_iter()
         .chain(divider_pair.into_iter())
-        .map(|pair| vec![pair.left, pair.right])
-        .flatten()
+        .flat_map(|pair| vec![pair.left, pair.right])
         .collect();
     packets.sort();
 
@@ -123,21 +121,20 @@ pub fn day_thirteen_part_two(path: &str) -> Result<usize, Error> {
                         Packet::List(l) => {
                             if l.len() == 1 {
                                 match &l[0] {
-                                    Packet::Number(2) => Some(index + 1),
-                                    Packet::Number(6) => Some(index + 1),
+                                    Packet::Number(2 | 6) => Some(index + 1),
                                     _ => None,
                                 }
                             } else {
                                 None
                             }
                         }
-                        _ => None,
+                        Packet::Number(_) => None,
                     }
                 } else {
                     None
                 }
             }
-            _ => None,
+            Packet::Number(_) => None,
         })
         .inspect(|p| println!("{p}"))
         .product())
