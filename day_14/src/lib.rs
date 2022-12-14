@@ -5,7 +5,7 @@ use nom::{
     sequence::separated_pair,
     IResult as NomResult, Parser,
 };
-use std::fs::read_to_string;
+use std::{collections::BTreeSet, fs::read_to_string};
 
 #[derive(Debug)]
 pub enum Error {
@@ -13,7 +13,7 @@ pub enum Error {
     Nom(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct Position {
     x: i64,
     y: i64,
@@ -36,7 +36,7 @@ impl Position {
 
     fn simulate_move(
         &self,
-        rested_blocks: &[Self],
+        rested_blocks: &BTreeSet<Self>,
         x_bound: Option<i64>,
         y_bound: i64,
     ) -> (Option<Self>, Move) {
@@ -46,7 +46,7 @@ impl Position {
                 x: self.x + m.x,
                 y: self.y + m.y,
             };
-            let is_target_free = !rested_blocks.iter().cloned().any(|pos| pos == target);
+            let is_target_free = rested_blocks.get(&target).is_none();
             let is_floor = x_bound.is_none() && target.y == y_bound;
             if is_target_free && !is_floor {
                 let is_in_bounds = x_bound.map_or(true, |x_bound| {
@@ -105,7 +105,7 @@ fn parse_input(input: &str) -> NomResult<&str, Vec<Vec<Position>>> {
 pub fn day_fourteen_part_one(path: &str) -> Result<usize, Error> {
     let input = read_to_string(path).map_err(Error::IO)?;
     let (_, rock_vectors) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
-    let mut rested_positions: Vec<Position> = rock_vectors
+    let mut rested_positions: BTreeSet<Position> = rock_vectors
         .iter()
         .flat_map(|vectors| {
             let v: Vec<Vec<Position>> = vectors
@@ -144,7 +144,7 @@ pub fn day_fourteen_part_one(path: &str) -> Result<usize, Error> {
                     break;
                 }
                 Move::Settled => {
-                    rested_positions.push(sand_unit);
+                    rested_positions.insert(sand_unit);
                     break;
                 }
                 _ => {
@@ -170,7 +170,7 @@ pub fn day_fourteen_part_one(path: &str) -> Result<usize, Error> {
 pub fn day_fourteen_part_two(path: &str) -> Result<usize, Error> {
     let input = read_to_string(path).map_err(Error::IO)?;
     let (_, rock_vectors) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
-    let mut rested_positions: Vec<Position> = rock_vectors
+    let mut rested_positions: BTreeSet<Position> = rock_vectors
         .iter()
         .flat_map(|vectors| {
             let v: Vec<Vec<Position>> = vectors
@@ -204,7 +204,7 @@ pub fn day_fourteen_part_two(path: &str) -> Result<usize, Error> {
                     break;
                 }
                 Move::Settled => {
-                    rested_positions.push(sand_unit);
+                    rested_positions.insert(sand_unit);
                     break;
                 }
                 _ => {
@@ -244,7 +244,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "it takes a long time to run at the moment"]
     fn day_fourteen_part_two_data() {
         let result = day_fourteen_part_two("data.txt").unwrap();
         assert_eq!(result, 29805);
