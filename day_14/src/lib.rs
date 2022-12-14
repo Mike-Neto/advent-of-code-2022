@@ -25,17 +25,19 @@ pub enum Move {
     DownRight,
     OutOfBounds,
     Settled,
+    BlockedSource,
 }
 
 impl Position {
     const DOWN: Position = Self { x: 0, y: 1 };
     const DOWN_LEFT: Position = Self { x: -1, y: 1 };
     const DOWN_RIGHT: Position = Self { x: 1, y: 1 };
+    const SOURCE: Position = Self { x: 500, y: 0 };
 
     fn simulate_move(
         &self,
         rested_blocks: &Vec<Position>,
-        x_bound: i64,
+        x_bound: Option<i64>,
         y_bound: i64,
     ) -> (Option<Position>, Move) {
         let moves = vec![Position::DOWN, Position::DOWN_LEFT, Position::DOWN_RIGHT];
@@ -45,9 +47,13 @@ impl Position {
                 y: self.y + m.y,
             };
             let is_target_free = !rested_blocks.iter().cloned().any(|pos| pos == target);
-            if is_target_free {
-                let is_in_bounds =
-                    target.x >= 0 && target.x <= x_bound && target.y >= 0 && target.y <= y_bound;
+            let is_floor = x_bound.is_none() && target.y == y_bound;
+            if is_target_free && !is_floor {
+                let is_in_bounds = if let Some(x_bound) = x_bound {
+                    target.x >= 0 && target.x <= x_bound && target.y >= 0 && target.y <= y_bound
+                } else {
+                    true
+                };
                 if !is_in_bounds {
                     return (None, Move::OutOfBounds);
                 } else {
@@ -59,6 +65,10 @@ impl Position {
                     return (Some(target), target_move);
                 }
             }
+        }
+
+        if *self == Position::SOURCE {
+            return (None, Move::BlockedSource);
         }
 
         return (None, Move::Settled);
@@ -121,17 +131,16 @@ pub fn day_fourteen_part_one(path: &str) -> Result<usize, Error> {
         .map(|p| p.y)
         .max()
         .unwrap_or_default();
-    let sand_source = Position { x: 500, y: 0 };
 
     let mut sand_units = 0;
     let mut out_of_bounds = false;
     loop {
-        let mut sand_unit = sand_source.clone();
+        let mut sand_unit = Position::SOURCE.clone();
         sand_units += 1;
 
         loop {
             let (new_position, move_outcome) =
-                sand_unit.simulate_move(&rested_positions, x_bound, y_bound);
+                sand_unit.simulate_move(&rested_positions, Some(x_bound), y_bound);
             match move_outcome {
                 Move::OutOfBounds => {
                     out_of_bounds = true;
@@ -164,9 +173,57 @@ pub fn day_fourteen_part_one(path: &str) -> Result<usize, Error> {
 /// permission to read it.
 pub fn day_fourteen_part_two(path: &str) -> Result<usize, Error> {
     let input = read_to_string(path).map_err(Error::IO)?;
-    let (_, _) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
+    let (_, rock_vectors) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
+    let mut rested_positions: Vec<Position> = rock_vectors
+        .iter()
+        .map(|vectors| {
+            let v: Vec<Vec<Position>> = vectors
+                .windows(2)
+                .map(|window| window[0].cartesian_product(&window[1]))
+                .collect();
+            v
+        })
+        .flatten()
+        .flatten()
+        .collect();
 
-    Ok(0)
+    let y_bound = rested_positions
+        .iter()
+        .map(|p| p.y)
+        .max()
+        .unwrap_or_default()
+        + 2;
+
+    let mut sand_units = 0;
+    let mut blocked_source = false;
+    loop {
+        let mut sand_unit = Position::SOURCE.clone();
+        sand_units += 1;
+
+        loop {
+            let (new_position, move_outcome) =
+                sand_unit.simulate_move(&rested_positions, None, y_bound);
+            match move_outcome {
+                Move::BlockedSource => {
+                    blocked_source = true;
+                    break;
+                }
+                Move::Settled => {
+                    rested_positions.push(sand_unit);
+                    break;
+                }
+                _ => {
+                    sand_unit = new_position.expect("moved to new position");
+                }
+            }
+        }
+
+        if blocked_source {
+            break;
+        }
+    }
+
+    Ok(sand_units)
 }
 
 #[cfg(test)]
@@ -186,16 +243,15 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn day_fourteen_part_two_example() {
         let result = day_fourteen_part_two("example.txt").unwrap();
-        assert_eq!(result, 1);
+        assert_eq!(result, 93);
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "it takes a long time to run at the moment"]
     fn day_fourteen_part_two_data() {
         let result = day_fourteen_part_two("data.txt").unwrap();
-        assert_eq!(result, 1);
+        assert_eq!(result, 29805);
     }
 }
