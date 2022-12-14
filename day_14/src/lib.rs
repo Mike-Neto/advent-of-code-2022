@@ -13,7 +13,7 @@ pub enum Error {
     Nom(String),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Position {
     x: i64,
     y: i64,
@@ -29,34 +29,30 @@ pub enum Move {
 }
 
 impl Position {
-    const DOWN: Position = Self { x: 0, y: 1 };
-    const DOWN_LEFT: Position = Self { x: -1, y: 1 };
-    const DOWN_RIGHT: Position = Self { x: 1, y: 1 };
-    const SOURCE: Position = Self { x: 500, y: 0 };
+    const DOWN: Self = Self { x: 0, y: 1 };
+    const DOWN_LEFT: Self = Self { x: -1, y: 1 };
+    const DOWN_RIGHT: Self = Self { x: 1, y: 1 };
+    const SOURCE: Self = Self { x: 500, y: 0 };
 
     fn simulate_move(
         &self,
-        rested_blocks: &Vec<Position>,
+        rested_blocks: &[Self],
         x_bound: Option<i64>,
         y_bound: i64,
-    ) -> (Option<Position>, Move) {
-        let moves = vec![Position::DOWN, Position::DOWN_LEFT, Position::DOWN_RIGHT];
+    ) -> (Option<Self>, Move) {
+        let moves = vec![Self::DOWN, Self::DOWN_LEFT, Self::DOWN_RIGHT];
         for (index, m) in moves.iter().enumerate() {
-            let target = Position {
+            let target = Self {
                 x: self.x + m.x,
                 y: self.y + m.y,
             };
             let is_target_free = !rested_blocks.iter().cloned().any(|pos| pos == target);
             let is_floor = x_bound.is_none() && target.y == y_bound;
             if is_target_free && !is_floor {
-                let is_in_bounds = if let Some(x_bound) = x_bound {
+                let is_in_bounds = x_bound.map_or(true, |x_bound| {
                     target.x >= 0 && target.x <= x_bound && target.y >= 0 && target.y <= y_bound
-                } else {
-                    true
-                };
-                if !is_in_bounds {
-                    return (None, Move::OutOfBounds);
-                } else {
+                });
+                if is_in_bounds {
                     let target_move = match index {
                         0 => Move::Down,
                         1 => Move::DownLeft,
@@ -64,24 +60,25 @@ impl Position {
                     };
                     return (Some(target), target_move);
                 }
+                return (None, Move::OutOfBounds);
             }
         }
 
-        if *self == Position::SOURCE {
+        if *self == Self::SOURCE {
             return (None, Move::BlockedSource);
         }
 
-        return (None, Move::Settled);
+        (None, Move::Settled)
     }
 
-    fn cartesian_product(&self, other: &Self) -> Vec<Position> {
+    fn cartesian_product(&self, other: &Self) -> Vec<Self> {
         let mut result = vec![];
 
         for x in 0..=self.x.abs_diff(other.x) {
             for y in 0..=self.y.abs_diff(other.y) {
-                let x = self.x.min(other.x) + x as i64;
-                let y = self.y.min(other.y) + y as i64;
-                result.push(Position { x, y });
+                let x = self.x.min(other.x) + i64::try_from(x).unwrap_or_default();
+                let y = self.y.min(other.y) + i64::try_from(y).unwrap_or_default();
+                result.push(Self { x, y });
             }
         }
 
@@ -110,14 +107,13 @@ pub fn day_fourteen_part_one(path: &str) -> Result<usize, Error> {
     let (_, rock_vectors) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
     let mut rested_positions: Vec<Position> = rock_vectors
         .iter()
-        .map(|vectors| {
+        .flat_map(|vectors| {
             let v: Vec<Vec<Position>> = vectors
                 .windows(2)
                 .map(|window| window[0].cartesian_product(&window[1]))
                 .collect();
             v
         })
-        .flatten()
         .flatten()
         .collect();
 
@@ -176,14 +172,13 @@ pub fn day_fourteen_part_two(path: &str) -> Result<usize, Error> {
     let (_, rock_vectors) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
     let mut rested_positions: Vec<Position> = rock_vectors
         .iter()
-        .map(|vectors| {
+        .flat_map(|vectors| {
             let v: Vec<Vec<Position>> = vectors
                 .windows(2)
                 .map(|window| window[0].cartesian_product(&window[1]))
                 .collect();
             v
         })
-        .flatten()
         .flatten()
         .collect();
 
