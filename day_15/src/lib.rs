@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use nom::{
     bytes::complete::tag,
     character::complete::{self, newline},
@@ -6,14 +5,10 @@ use nom::{
     sequence::{preceded, separated_pair},
     IResult as NomResult,
 };
-use rayon::prelude::*;
-use spiral::ManhattanIterator;
 use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap},
     fs::read_to_string,
-    ops::{AddAssign, RangeInclusive},
-    sync::{Arc, Mutex},
+    ops::RangeInclusive,
 };
 
 #[derive(Debug)]
@@ -61,23 +56,6 @@ fn parse_input(input: &str) -> NomResult<&str, Vec<Pair>> {
     separated_list1(newline, parse_line)(input)
 }
 
-fn print_grid(grid: &HashMap<Position, char>) {
-    let lower_x = grid.keys().map(|p| p.x).min().unwrap_or_default();
-    let upper_x = grid.keys().map(|p| p.x).max().unwrap_or_default();
-    let lower_y = grid.keys().map(|p| p.y).min().unwrap_or_default();
-    let upper_y = grid.keys().map(|p| p.y).max().unwrap_or_default();
-    println!("{lower_x}->{upper_x}");
-    for y in lower_y..=upper_y {
-        print!("{y:0>2} ");
-        for x in lower_x..=upper_x {
-            let symbol = grid.get(&Position { x, y }).unwrap_or(&'.');
-            print!("{symbol}");
-        }
-        print!("\n");
-    }
-    print!("\n");
-}
-
 /// TODO
 ///
 /// # Errors
@@ -91,16 +69,19 @@ pub fn day_fifteen_part_one(path: &str, target_y: i64) -> Result<usize, Error> {
     let mut grid: HashMap<Position, char> = HashMap::new();
 
     for Pair { sensor, beacon } in sensor_beacon_pairs {
-        let x_distance = sensor.x.abs_diff(beacon.x);
-        let y_distance = sensor.y.abs_diff(beacon.y);
-        let absolute_distance = (x_distance + y_distance) as i64;
-        let y_distance_to_target = sensor.y.abs_diff(target_y);
+        let x_distance: i64 = sensor.x.abs_diff(beacon.x).try_into().unwrap_or_default();
+        let y_distance: i64 = sensor.y.abs_diff(beacon.y).try_into().unwrap_or_default();
+        let absolute_distance = x_distance + y_distance;
+        let y_distance_to_target: i64 = sensor.y.abs_diff(target_y).try_into().unwrap_or_default();
 
         let y_range = (sensor.y - absolute_distance)..=(sensor.y + absolute_distance);
         if y_range.contains(&target_y) {
             let x_range = (sensor.x
-                - absolute_distance.abs_diff(y_distance_to_target as i64) as i64)
-                ..=(sensor.x + absolute_distance.abs_diff(y_distance_to_target as i64) as i64);
+                - i64::try_from(absolute_distance.abs_diff(y_distance_to_target))
+                    .unwrap_or_default())
+                ..=(sensor.x
+                    + (i64::try_from(absolute_distance.abs_diff(y_distance_to_target))
+                        .unwrap_or_default()));
             for x in x_range {
                 grid.insert(Position { x, y: target_y }, '#');
             }
@@ -162,7 +143,7 @@ pub fn day_fifteen_part_two(path: &str, upper_bound: i64) -> Result<i64, Error> 
             low_high
                 .entry(y)
                 .and_modify(|lh| lh.push(range.clone()))
-                .or_insert(vec![range]);
+                .or_insert_with(|| vec![range]);
         }
     }
 
@@ -185,7 +166,7 @@ pub fn day_fifteen_part_two(path: &str, upper_bound: i64) -> Result<i64, Error> 
                 });
             result.1.map(|x| (x, key))
         })
-        .unwrap();
+        .unwrap_or_default();
 
     Ok((x * 4_000_000) + y)
 }
@@ -217,6 +198,6 @@ mod tests {
     #[ignore = "too slow"]
     fn day_fifteen_part_two_data() {
         let result = day_fifteen_part_two("data.txt", 4_000_000).unwrap();
-        assert_eq!(result, 1);
+        assert_eq!(result, 11_583_882_601_918);
     }
 }
