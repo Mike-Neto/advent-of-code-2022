@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use nom::{
     bytes::complete::tag,
     character::complete::{self, newline},
@@ -5,7 +6,15 @@ use nom::{
     sequence::{preceded, separated_pair},
     IResult as NomResult,
 };
-use std::{collections::HashMap, fs::read_to_string};
+use rayon::prelude::*;
+use spiral::ManhattanIterator;
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap, HashSet},
+    fs::read_to_string,
+    ops::{AddAssign, RangeInclusive},
+    sync::{Arc, Mutex},
+};
 
 #[derive(Debug)]
 pub enum Error {
@@ -13,11 +22,13 @@ pub enum Error {
     Nom(String),
 }
 
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Ord, PartialOrd)]
 pub struct Position {
     x: i64,
     y: i64,
 }
+
+unsafe impl Sync for Position {}
 
 #[derive(Debug)]
 pub struct Pair {
@@ -55,6 +66,7 @@ fn print_grid(grid: &HashMap<Position, char>) {
     let upper_x = grid.keys().map(|p| p.x).max().unwrap_or_default();
     let lower_y = grid.keys().map(|p| p.y).min().unwrap_or_default();
     let upper_y = grid.keys().map(|p| p.y).max().unwrap_or_default();
+    println!("{lower_x}->{upper_x}");
     for y in lower_y..=upper_y {
         print!("{y:0>2} ");
         for x in lower_x..=upper_x {
@@ -118,11 +130,64 @@ pub fn day_fifteen_part_one(path: &str, target_y: i64) -> Result<usize, Error> {
 ///
 /// Will return `Err` if `path` does not exist or the user does not have
 /// permission to read it.
-pub fn day_fifteen_part_two(path: &str) -> Result<usize, Error> {
+pub fn day_fifteen_part_two(path: &str, upper_bound: i64) -> Result<i64, Error> {
     let input = read_to_string(path).map_err(Error::IO)?;
-    let (_, _) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
+    let (_, sensor_beacon_pairs) = parse_input(&input).map_err(|e| Error::Nom(e.to_string()))?;
 
-    Ok(0)
+    let distances: BTreeMap<&Position, i64> = sensor_beacon_pairs
+        .iter()
+        .map(|Pair { sensor, beacon }| {
+            (
+                sensor,
+                (beacon.x - sensor.x).abs() + (beacon.y - sensor.y).abs(),
+            )
+        })
+        .collect();
+
+    let mut low_high: BTreeMap<i64, Vec<RangeInclusive<i64>>> = BTreeMap::new();
+    for (y, range) in distances.iter().flat_map(|(sensor, max_distance)| {
+        ((sensor.y - max_distance)..(sensor.y + max_distance)).map(|y| {
+            let distance_to_line = sensor.y - y;
+
+            let max_distance_on_line = *max_distance - distance_to_line.abs();
+
+            (
+                y,
+                ((sensor.x - max_distance_on_line).max(0))
+                    ..=((sensor.x + max_distance_on_line).min(upper_bound)),
+            )
+        })
+    }) {
+        if y >= 0 && y <= upper_bound {
+            low_high
+                .entry(y)
+                .and_modify(|lh| lh.push(range.clone()))
+                .or_insert(vec![range]);
+        }
+    }
+
+    let (x, y) = low_high
+        .into_iter()
+        .find_map(|(key, mut ranges)| {
+            ranges.sort_by(|a, b| a.start().cmp(b.start()));
+            let result: (RangeInclusive<i64>, Option<i64>) =
+                ranges.iter().fold((0..=0, None), |mut acc, range| {
+                    if acc.1.is_some() {
+                        return acc;
+                    }
+                    if acc.0.end() + 1 >= *range.start() {
+                        acc.0 = *acc.0.start()..=(*acc.0.end().max(range.end()));
+                    } else {
+                        acc.1 = Some(acc.0.end() + 1);
+                    }
+
+                    acc
+                });
+            result.1.map(|x| (x, key))
+        })
+        .unwrap();
+
+    Ok((x * 4_000_000) + y)
 }
 
 #[cfg(test)]
@@ -130,14 +195,13 @@ mod tests {
     use crate::{day_fifteen_part_one, day_fifteen_part_two};
 
     #[test]
-    #[ignore = "it takes too long"]
     fn day_fifteen_part_one_example() {
         let result = day_fifteen_part_one("example.txt", 10).unwrap();
         assert_eq!(result, 26);
     }
 
     #[test]
-    #[ignore = "it takes too long"]
+    #[ignore = "too slow"]
     fn day_fifteen_part_one_data() {
         let result = day_fifteen_part_one("data.txt", 2_000_000).unwrap();
         assert_eq!(result, 4_985_193);
@@ -145,14 +209,14 @@ mod tests {
 
     #[test]
     fn day_fifteen_part_two_example() {
-        let result = day_fifteen_part_two("example.txt").unwrap();
+        let result = day_fifteen_part_two("example.txt", 20).unwrap();
         assert_eq!(result, 56_000_011);
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "too slow"]
     fn day_fifteen_part_two_data() {
-        let result = day_fifteen_part_two("data.txt").unwrap();
-        assert_eq!(result, 56000011);
+        let result = day_fifteen_part_two("data.txt", 4_000_000).unwrap();
+        assert_eq!(result, 1);
     }
 }

@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 nom = { workspace = true }
+rayon = "1.6.1"
+itertools = { workspace = true }
+spiral = "0.2.0"
